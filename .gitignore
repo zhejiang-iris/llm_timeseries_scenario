@@ -1,0 +1,14 @@
+sbatch_logs/
+__pycache__/
+checkpoints/
+
+# dataset
+electricity/
+ETT-small/
+exchange_rate/
+illness/
+m4/
+weather/
+PEMS/
+solar/
+traffic/
