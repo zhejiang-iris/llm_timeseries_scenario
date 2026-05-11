@@ -1,12 +1,14 @@
 from torch.utils.data import DataLoader
 
 from data_provider_pretrain.data_loader import Dataset_ETT_hour, Dataset_ETT_minute
+from data_provider.data_loader import Dataset_Custom
 
 data_dict = {
     'ETTh1': Dataset_ETT_hour,
     'ETTh2': Dataset_ETT_hour,
     'ETTm1': Dataset_ETT_minute,
     'ETTm2': Dataset_ETT_minute,
+    'COVID': Dataset_Custom,
 }
 
 
@@ -26,7 +28,7 @@ def data_provider(args, data, data_path, pretrain=True, flag='train'):
         batch_size = args.batch_size
         freq = args.freq
 
-    data_set = Data(
+    dataset_kwargs = dict(
         root_path=args.root_path,
         data_path=data_path,
         flag=flag,
@@ -37,8 +39,11 @@ def data_provider(args, data, data_path, pretrain=True, flag='train'):
         freq=freq,
         percent=percent,
         seasonal_patterns=args.seasonal_patterns,
-        pretrain=pretrain
     )
+    if Data in [Dataset_ETT_hour, Dataset_ETT_minute]:
+        dataset_kwargs['pretrain'] = pretrain
+
+    data_set = Data(**dataset_kwargs)
     data_loader = DataLoader(
         data_set,
         batch_size=batch_size,

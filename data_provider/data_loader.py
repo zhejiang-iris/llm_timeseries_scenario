@@ -85,6 +85,7 @@ class Dataset_ETT_hour(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+        self.raw_dates = pd.to_datetime(df_stamp['date'].values)
 
 
     def __getitem__(self, index):
@@ -106,6 +107,12 @@ class Dataset_ETT_hour(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
+
+    def window_dates(self, index):
+        feat_id = index // self.tot_len
+        s_begin = index % self.tot_len
+        s_end = s_begin + self.seq_len
+        return self.raw_dates[s_begin], self.raw_dates[s_end - 1]
 
 
 class Dataset_ETT_minute(Dataset):
@@ -184,6 +191,7 @@ class Dataset_ETT_minute(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+        self.raw_dates = pd.to_datetime(df_stamp['date'].values)
 
     def __getitem__(self, index):
         feat_id = index // self.tot_len
@@ -246,6 +254,16 @@ class Dataset_Custom(Dataset):
         '''
         df_raw.columns: ['date', ...(other features), target feature]
         '''
+        if 'date' not in df_raw.columns:
+            if 'Day' in df_raw.columns:
+                df_raw = df_raw.rename(columns={'Day': 'date'})
+            else:
+                df_raw = df_raw.rename(columns={df_raw.columns[0]: 'date'})
+
+        if self.target not in df_raw.columns:
+            numeric_cols = [col for col in df_raw.columns if col != 'date']
+            self.target = numeric_cols[-1]
+
         cols = list(df_raw.columns)
         cols.remove(self.target)
         cols.remove('date')
@@ -289,6 +307,7 @@ class Dataset_Custom(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+        self.raw_dates = pd.to_datetime(df_stamp['date'].values)
 
     def __getitem__(self, index):
         feat_id = index // self.tot_len
@@ -309,6 +328,11 @@ class Dataset_Custom(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
+
+    def window_dates(self, index):
+        s_begin = index % self.tot_len
+        s_end = s_begin + self.seq_len
+        return self.raw_dates[s_begin], self.raw_dates[s_end - 1]
 
 
 class Dataset_M4(Dataset):
@@ -386,4 +410,3 @@ class Dataset_M4(Dataset):
             insample[i, -len(ts):] = ts_last_window
             insample_mask[i, -len(ts):] = 1.0
         return insample, insample_mask
-

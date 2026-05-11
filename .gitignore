@@ -1,6 +1,7 @@
 sbatch_logs/
 __pycache__/
 checkpoints/
+results/
 
 # dataset
 electricity/
@@ -12,3 +13,4 @@ weather/
 PEMS/
 solar/
 traffic/
+COVID/

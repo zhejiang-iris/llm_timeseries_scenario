@@ -1,0 +1,1 @@
+This dataset contains a weekly United States COVID-19 time series. The target column is observation, representing incident COVID-19 deaths for each week. Use the historical weekly death-incidence pattern to forecast future observations.
