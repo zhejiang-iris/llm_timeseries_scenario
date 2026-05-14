@@ -51,6 +51,8 @@ parser.add_argument('--freq', type=str, default='h',
                          'options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], '
                          'you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+parser.add_argument('--delete_checkpoints', action='store_true',
+                    help='delete the checkpoints directory after training finishes')
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -95,6 +97,8 @@ parser.add_argument('--loss', type=str, default='MSE', help='loss function')
 parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
 parser.add_argument('--pct_start', type=float, default=0.2, help='pct_start')
 parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
+parser.add_argument('--use_aux_data', action='store_true',
+                    help='use other dataset files in root_path as auxiliary fine-tuning data')
 parser.add_argument('--llm_layers', type=int, default=6)
 parser.add_argument('--percent', type=int, default=100)
 
@@ -176,7 +180,12 @@ for ii in range(args.itr):
 
         model.train()
         epoch_time = time.time()
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in tqdm(enumerate(train_loader)):
+        for i, batch in tqdm(enumerate(train_loader)):
+            if len(batch) == 5:
+                batch_x, batch_y, batch_x_mark, batch_y_mark, batch_source_id = batch
+            else:
+                batch_x, batch_y, batch_x_mark, batch_y_mark = batch
+                batch_source_id = None
             iter_count += 1
             model_optim.zero_grad()
 
@@ -195,9 +204,15 @@ for ii in range(args.itr):
             if args.use_amp:
                 with torch.cuda.amp.autocast():
                     if args.output_attention:
-                        outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                        if batch_source_id is not None and args.model == 'TimeLLM':
+                            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark, source_ids=batch_source_id)[0]
+                        else:
+                            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                     else:
-                        outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        if batch_source_id is not None and args.model == 'TimeLLM':
+                            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark, source_ids=batch_source_id)
+                        else:
+                            outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                     f_dim = -1 if args.features == 'MS' else 0
                     outputs = outputs[:, -args.pred_len:, f_dim:]
@@ -206,9 +221,15 @@ for ii in range(args.itr):
                     train_loss.append(loss.item())
             else:
                 if args.output_attention:
-                    outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                    if batch_source_id is not None and args.model == 'TimeLLM':
+                        outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark, source_ids=batch_source_id)[0]
+                    else:
+                        outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                 else:
-                    outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    if batch_source_id is not None and args.model == 'TimeLLM':
+                        outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark, source_ids=batch_source_id)
+                    else:
+                        outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                 f_dim = -1 if args.features == 'MS' else 0
                 outputs = outputs[:, -args.pred_len:, f_dim:]
@@ -264,7 +285,6 @@ for ii in range(args.itr):
             accelerator.print('Updating learning rate to {}'.format(scheduler.get_last_lr()[0]))
 
 accelerator.wait_for_everyone()
-if accelerator.is_local_main_process:
-    path = './checkpoints'  # unique checkpoint saving path
-    del_files(path)  # delete checkpoint files
+if args.delete_checkpoints and accelerator.is_local_main_process:
+    del_files(args.checkpoints)  # delete checkpoint files
     accelerator.print('success delete checkpoints')

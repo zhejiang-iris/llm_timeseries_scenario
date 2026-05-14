@@ -44,7 +44,7 @@ def data_provider(args, flag):
             seasonal_patterns=args.seasonal_patterns
         )
     else:
-        data_set = Data(
+        data_kwargs = dict(
             root_path=args.root_path,
             data_path=args.data_path,
             flag=flag,
@@ -56,6 +56,12 @@ def data_provider(args, flag):
             percent=percent,
             seasonal_patterns=args.seasonal_patterns
         )
+        if Data == Dataset_Custom:
+            data_kwargs.update(
+                use_aux_data=getattr(args, 'use_aux_data', False) and flag == 'train',
+                return_source_id=getattr(args, 'use_aux_data', False) and flag == 'train'
+            )
+        data_set = Data(**data_kwargs)
     data_loader = DataLoader(
         data_set,
         batch_size=batch_size,

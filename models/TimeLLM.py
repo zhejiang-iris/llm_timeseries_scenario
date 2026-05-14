@@ -191,13 +191,13 @@ class Model(nn.Module):
 
         self.normalize_layers = Normalize(configs.enc_in, affine=False)
 
-    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
+    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None, source_ids=None):
         if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
-            dec_out = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
+            dec_out = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec, source_ids=source_ids)
             return dec_out[:, -self.pred_len:, :]
         return None
 
-    def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
+    def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec, source_ids=None):
 
         x_enc = self.normalize_layers(x_enc, 'norm')
 
@@ -212,12 +212,17 @@ class Model(nn.Module):
 
         prompt = []
         for b in range(x_enc.shape[0]):
+            source_id = ''
+            if source_ids is not None:
+                sample_source = source_ids[b // N]
+                source_id = f"Series identifier: {sample_source}. "
             min_values_str = str(min_values[b].tolist()[0])
             max_values_str = str(max_values[b].tolist()[0])
             median_values_str = str(medians[b].tolist()[0])
             lags_values_str = str(lags[b].tolist())
             prompt_ = (
-                f"<|start_prompt|>Dataset description: {self.description}"
+                f"<|start_prompt|>Dataset description: {self.description} "
+                f"{source_id}"
                 f"Task description: forecast the next {str(self.pred_len)} steps given the previous {str(self.seq_len)} steps information; "
                 "Input statistics: "
                 f"min value {min_values_str}, "

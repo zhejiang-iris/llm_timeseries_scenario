@@ -2,7 +2,7 @@
 #SBATCH --job-name=COVID_US_0_130_LTF
 #SBATCH --account=alrodri0
 #SBATCH --partition=spgpu
-#SBATCH --time=7:00:00
+#SBATCH --time=24:00:00
 #SBATCH --mem=256G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -24,11 +24,11 @@ cd /home/zhejiang/scenario/Time-LLM
 python run_main.py \
     --task_name long_term_forecast \
     --is_training 1 \
-    --root_path ./dataset/COVID/ \
+    --root_path ./dataset/COVID/science_hub_death \
     --data_path US_0-130_inc_death.csv \
     --model_id COVID_US_0_130_inc_death_96_24 \
     --model TimeLLM \
-    --data CUSTOM \
+    --data COVID \
     --features S \
     --target observation \
     --freq w \
@@ -43,8 +43,9 @@ python run_main.py \
     --itr 1 \
     --d_model 32 \
     --d_ff 128 \
-    --batch_size 1 \
+    --batch_size 4 \
     --learning_rate 0.0001 \
+    --use_aux_data \
     --llm_layers 64 \
     --train_epochs 30 \
     --model_comment TimeLLM-COVID-US-0-130-inc-death

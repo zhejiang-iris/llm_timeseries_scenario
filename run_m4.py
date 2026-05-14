@@ -55,6 +55,8 @@ parser.add_argument('--freq', type=str, default='h',
                          'options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], '
                          'you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+parser.add_argument('--delete_checkpoints', action='store_true',
+                    help='delete the checkpoints directory after training finishes')
 
 # forecasting task
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -305,7 +307,6 @@ for ii in range(args.itr):
             accelerator.print('After all 6 tasks are finished, you can calculate the averaged performance')
 
 accelerator.wait_for_everyone()
-if accelerator.is_local_main_process:
-    path = './checkpoints'  # unique checkpoint saving path
-    del_files(path)  # delete checkpoint files
+if args.delete_checkpoints and accelerator.is_local_main_process:
+    del_files(args.checkpoints)  # delete checkpoint files
     accelerator.print('success delete checkpoints')
